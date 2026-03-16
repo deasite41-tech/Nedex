@@ -325,10 +325,6 @@ footer{max-width:100%;padding:28px 40px;border-top:1px solid var(--border);displ
         <div class="dot"></div>
         <span id="online-count">—</span>&nbsp;online now
       </div>
-      <div class="online-badge" style="border-color:rgba(255,255,255,.08)">
-        <div style="width:6px;height:6px;border-radius:50%;background:rgba(240,240,240,.3)"></div>
-        <span id="offline-count">—</span>&nbsp;offline
-      </div>
     </div>
     <h2>Nedex's Development</h2>
     <p>A Discord server for devs, modders, and builders. Join the community.</p>
@@ -377,50 +373,18 @@ document.querySelectorAll('.reveal').forEach(el=>obs.observe(el));
 const cObs=new IntersectionObserver(e=>e.forEach(x=>{if(x.isIntersecting){const d=parseFloat(x.target.style.transitionDelay||0)*1000;setTimeout(()=>x.target.classList.add('visible'),d);}}),{threshold:.08});
 document.querySelectorAll('.skill-item').forEach(c=>cObs.observe(c));
 
-/* ══════════════════════════════════════════════
-   Palm Bot Stats — live online/offline counts
-   Fetches from the bot's local HTTP server.
-
-   ⚠️ Replace IP with your Termux phone's IP.
-   Find it in Termux by running: ifconfig | grep inet
-   Example: http://192.168.1.42:3000/stats
-══════════════════════════════════════════════ */
-// ═══════════════════════════════════════════════════════
-//  Live Stats — reads from Palm Bot's stats channel
-//  The bot edits a message in your server every 60s
-//  with { online, offline, total }
-//  We read it via Discord's public messages API.
-//
-//  Replace STATS_CHANNEL_ID with your #bot-stats channel ID
-//  Replace STATS_MESSAGE_ID with the message ID the bot created
-//  (right-click the message → Copy Message ID)
-// ═══════════════════════════════════════════════════════
-
-const STATS_CHANNEL_ID = '1483041668721803314';
-const STATS_MESSAGE_ID = '1483051678747070486';
-
+// Online members from Discord widget
 async function fetchOnline() {
   try {
-    const r = await fetch(
-      `https://discord.com/api/v10/channels/${STATS_CHANNEL_ID}/messages/${STATS_MESSAGE_ID}`,
-      { cache: 'no-store' }
-    );
+    const r = await fetch('https://discord.com/api/guilds/1482677439703552223/widget.json', { cache: 'no-store' });
     if (!r.ok) throw 0;
-    const msg  = await r.json();
-
-    // Extract JSON from code block: ```json\n{...}\n```
-    const match = msg.content.match(/```json\n([\s\S]+?)\n```/);
-    if (!match) throw 0;
-    const d = JSON.parse(match[1]);
-
-    const onlineEl  = document.getElementById('online-count');
-    const offlineEl = document.getElementById('offline-count');
-    if (onlineEl)  onlineEl.textContent  = d.online.toLocaleString();
-    if (offlineEl) offlineEl.textContent = d.offline.toLocaleString();
+    const d = await r.json();
+    const el = document.getElementById('online-count');
+    if (el && d.presence_count != null) el.textContent = d.presence_count;
   } catch (_) {}
 }
 fetchOnline();
-setInterval(fetchOnline, 60000);
+setInterval(fetchOnline, 30000);
 </script>
 </body>
 </html>
