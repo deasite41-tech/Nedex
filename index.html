@@ -684,7 +684,7 @@ footer{
   <div class="f-copy">© 2025 Nedex // KSA</div>
   <div class="f-copy" style="margin-top:6px;display:flex;align-items:center;gap:7px;">
     <span style="display:inline-block;width:5px;height:5px;background:var(--accent);border-radius:50%;box-shadow:0 0 6px var(--accent);animation:sPulse 2s ease-in-out infinite;"></span>
-    <span id="visit-count">—</span>&nbsp;visitors
+    <img src="https://visitcount.itsvg.in/api?id=deasite41-tech&label=Visitors&color=0&icon=0&pretty=false" style="height:16px;opacity:0.75;" alt="visitor count"/>
   </div>
 </footer>
 
@@ -897,29 +897,6 @@ async function fetchOnline() {
 }
 fetchOnline();
 setInterval(fetchOnline, 30000);
-
-/* ── VISITOR COUNTER ── */
-async function trackVisit(){
-  try {
-    const r = await fetch('https://api.counterapi.dev/v1/deasite41-tech/visits/up');
-    const d = await r.json();
-    const el = document.getElementById('visit-count');
-    if(el && d.count != null){
-      const target = d.count;
-      let current = Math.max(0, target - 60);
-      const step = () => {
-        current = Math.min(current + Math.ceil((target - current) / 8 + 1), target);
-        el.textContent = current.toLocaleString();
-        if(current < target) requestAnimationFrame(step);
-      };
-      step();
-    }
-  } catch(_){
-    const el = document.getElementById('visit-count');
-    if(el) el.textContent = '—';
-  }
-}
-trackVisit();
 
 /* ════════════════════════════════════
    CURSOR — INK BLOB
