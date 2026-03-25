@@ -901,13 +901,11 @@ setInterval(fetchOnline, 30000);
 /* ── VISITOR COUNTER ── */
 async function trackVisit(){
   try {
-    // hit() increments by 1 and returns new count
-    const r = await fetch('https://api.countapi.xyz/hit/deasite41-tech/visits');
+    const r = await fetch('https://api.counterapi.dev/v1/deasite41-tech/visits/up');
     const d = await r.json();
     const el = document.getElementById('visit-count');
-    if(el && d.value != null){
-      // animate count up
-      const target = d.value;
+    if(el && d.count != null){
+      const target = d.count;
       let current = Math.max(0, target - 60);
       const step = () => {
         current = Math.min(current + Math.ceil((target - current) / 8 + 1), target);
@@ -916,7 +914,10 @@ async function trackVisit(){
       };
       step();
     }
-  } catch(_){}
+  } catch(_){
+    const el = document.getElementById('visit-count');
+    if(el) el.textContent = '—';
+  }
 }
 trackVisit();
 
