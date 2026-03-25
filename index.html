@@ -682,6 +682,10 @@ footer{
     <a href="#discord">Discord</a>
   </nav>
   <div class="f-copy">© 2025 Nedex // KSA</div>
+  <div class="f-copy" style="margin-top:6px;display:flex;align-items:center;gap:7px;">
+    <span style="display:inline-block;width:5px;height:5px;background:var(--accent);border-radius:50%;box-shadow:0 0 6px var(--accent);animation:sPulse 2s ease-in-out infinite;"></span>
+    <span id="visit-count">—</span>&nbsp;visitors
+  </div>
 </footer>
 
 </div><!-- end .page -->
@@ -893,6 +897,28 @@ async function fetchOnline() {
 }
 fetchOnline();
 setInterval(fetchOnline, 30000);
+
+/* ── VISITOR COUNTER ── */
+async function trackVisit(){
+  try {
+    // hit() increments by 1 and returns new count
+    const r = await fetch('https://api.countapi.xyz/hit/deasite41-tech/visits');
+    const d = await r.json();
+    const el = document.getElementById('visit-count');
+    if(el && d.value != null){
+      // animate count up
+      const target = d.value;
+      let current = Math.max(0, target - 60);
+      const step = () => {
+        current = Math.min(current + Math.ceil((target - current) / 8 + 1), target);
+        el.textContent = current.toLocaleString();
+        if(current < target) requestAnimationFrame(step);
+      };
+      step();
+    }
+  } catch(_){}
+}
+trackVisit();
 
 /* ════════════════════════════════════
    CURSOR — INK BLOB
