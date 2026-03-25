@@ -34,7 +34,9 @@ body{
   color:var(--text);
   overflow-x:hidden;
   min-height:100vh;
+  cursor:none;
 }
+#cur{position:fixed;top:0;left:0;pointer-events:none;z-index:9999;}
 
 /* ── FIXED BG CANVAS (stars + wire physics) ── */
 #bg{position:fixed;inset:0;z-index:0;pointer-events:none}
@@ -467,6 +469,7 @@ footer{
 <body>
 
 <!-- BG CANVAS: stars + wire physics -->
+<canvas id="cur"></canvas>
 <canvas id="bg"></canvas>
 
 <div class="page">
@@ -890,6 +893,165 @@ async function fetchOnline() {
 }
 fetchOnline();
 setInterval(fetchOnline, 30000);
+
+/* ════════════════════════════════════
+   CURSOR — INK BLOB
+   Resting: a breathing organic blob
+   Moving: stretches like dragged ink
+   Click: splats outward
+════════════════════════════════════ */
+(function(){
+  const cvs = document.getElementById('cur');
+  const ctx = cvs.getContext('2d');
+  const S = 120;
+  cvs.width = S; cvs.height = S;
+  const C = S / 2;
+
+  let mx = -999, my = -999;
+  let ax = -999, ay = -999;
+  let vx = 0, vy = 0;
+  let svx = 0, svy = 0; // smoothed velocity
+  let hover = false, clicking = false;
+  let inkDrops = [];
+  let t = 0;
+
+  const sel = 'a,button,[role="button"],.btn-p,.btn-o,.h-cta,.skill-item,.tag';
+  document.addEventListener('mousemove', e => {
+    vx = e.clientX - mx;
+    vy = e.clientY - my;
+    mx = e.clientX; my = e.clientY;
+  }, {passive:true});
+  document.addEventListener('mouseover', e => { if(e.target.closest(sel)) hover=true; });
+  document.addEventListener('mouseout',  e => { if(e.target.closest(sel)) hover=false; });
+  document.addEventListener('mousedown', () => {
+    clicking = true;
+    for(let i=0;i<8;i++){
+      const a = Math.random()*Math.PI*2;
+      const spd = 1.5 + Math.random()*3;
+      inkDrops.push({ x:C, y:C, vx:Math.cos(a)*spd, vy:Math.sin(a)*spd, r:1.2+Math.random()*2, life:1 });
+    }
+  });
+  document.addEventListener('mouseup', () => clicking=false);
+
+  function drawBlob(cx, cy, rx, ry, angle, wobble, t){
+    // Draw an organic blob using 8 bezier points with wobble
+    const pts = 8;
+    const points = [];
+    for(let i=0;i<pts;i++){
+      const a = (i/pts)*Math.PI*2;
+      const wx = rx * (1 + wobble * Math.sin(t*1.8 + i*1.3));
+      const wy = ry * (1 + wobble * Math.cos(t*2.1 + i*1.1));
+      points.push({
+        x: cx + Math.cos(a)*wx*Math.cos(angle) - Math.sin(a)*wy*Math.sin(angle),
+        y: cy + Math.cos(a)*wx*Math.sin(angle) + Math.sin(a)*wy*Math.cos(angle),
+      });
+    }
+    ctx.beginPath();
+    for(let i=0;i<pts;i++){
+      const p  = points[i];
+      const pn = points[(i+1)%pts];
+      const mx = (p.x+pn.x)/2;
+      const my = (p.y+pn.y)/2;
+      if(i===0) ctx.moveTo(mx, my);
+      else ctx.quadraticCurveTo(p.x, p.y, mx, my);
+    }
+    ctx.closePath();
+  }
+
+  function draw(){
+    ctx.clearRect(0,0,S,S);
+    t += 0.038;
+
+    if(ax===-999){ ax=mx; ay=my; }
+    ax += (mx-ax)*0.15;
+    ay += (my-ay)*0.15;
+    cvs.style.transform = `translate(${ax-C}px,${ay-C}px)`;
+
+    svx += (vx - svx)*0.18;
+    svy += (vy - svy)*0.18;
+    vx=0; vy=0; // reset each frame so it decays
+    const speed = Math.hypot(svx, svy);
+    const moveAngle = Math.atan2(svy, svx);
+
+    // Stretch amount — eases back to 0 when still
+    const stretch = Math.min(speed * 1.2, 26);
+    const squish  = Math.max(1 - stretch*0.028, 0.45);
+
+    const baseR = clicking ? 5 : hover ? 9 : 7;
+    const wobble = clicking ? 0 : hover ? 0.18 : 0.11;
+
+    // ── Ink splat drops ──
+    inkDrops = inkDrops.filter(d=>d.life>0.04);
+    inkDrops.forEach(d=>{
+      d.x+=d.vx; d.y+=d.vy;
+      d.vx*=0.87; d.vy*=0.87;
+      d.life*=0.88;
+      drawBlob(d.x, d.y, d.r*d.life*1.4, d.r*d.life, 0, 0.2, t);
+      ctx.fillStyle=`rgba(0,255,159,${d.life*0.7})`;
+      ctx.fill();
+    });
+
+    // ── Outer glow ──
+    const glow = ctx.createRadialGradient(C,C,0,C,C,baseR*3.5);
+    glow.addColorStop(0,  `rgba(0,255,159,${hover?0.2:0.1})`);
+    glow.addColorStop(1,  'rgba(0,255,159,0)');
+    ctx.save();
+    ctx.translate(C,C);
+    ctx.rotate(speed>0.5 ? moveAngle : 0);
+    ctx.scale(1+stretch*0.065, squish);
+    ctx.translate(-C,-C);
+    drawBlob(C,C, baseR*2.2, baseR*2.2, 0, wobble*0.5, t);
+    ctx.fillStyle=glow;
+    ctx.fill();
+    ctx.restore();
+
+    // ── Main ink blob ──
+    ctx.save();
+    ctx.translate(C,C);
+    ctx.rotate(speed>0.5 ? moveAngle : 0);
+    ctx.scale(1+stretch*0.065, squish);
+    ctx.translate(-C,-C);
+
+    drawBlob(C, C, baseR, baseR, 0, wobble, t);
+
+    const fill = ctx.createRadialGradient(C-baseR*0.25, C-baseR*0.3, 0, C, C, baseR*1.4);
+    fill.addColorStop(0,   '#b0ffdc');
+    fill.addColorStop(0.28,'#00ff9f');
+    fill.addColorStop(0.7, '#00883f');
+    fill.addColorStop(1,   '#001a0a');
+    ctx.fillStyle = fill;
+    ctx.fill();
+
+    // Sheen
+    drawBlob(C-baseR*0.2, C-baseR*0.28, baseR*0.22, baseR*0.14, -0.5, 0, t);
+    ctx.fillStyle='rgba(255,255,255,0.5)';
+    ctx.fill();
+
+    ctx.restore();
+
+    // ── Ink thread trailing when fast ──
+    if(stretch > 6){
+      ctx.save();
+      ctx.translate(C,C);
+      ctx.rotate(moveAngle);
+      const threadLen = stretch * 0.85;
+      const tGrad = ctx.createLinearGradient(-baseR*0.5,0,-baseR*0.5-threadLen,0);
+      tGrad.addColorStop(0, `rgba(0,255,159,${Math.min((stretch-6)/18,0.55)})`);
+      tGrad.addColorStop(1,  'rgba(0,255,159,0)');
+      ctx.beginPath();
+      ctx.moveTo(-baseR*0.4, 0);
+      ctx.lineTo(-baseR*0.5-threadLen, 0);
+      ctx.strokeStyle=tGrad;
+      ctx.lineWidth=baseR*squish*0.6;
+      ctx.lineCap='round';
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    requestAnimationFrame(draw);
+  }
+  draw();
+})();
 </script>
 </body>
 </html>
